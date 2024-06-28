@@ -1,40 +1,49 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
+import pandas as pd
 
 app = FastAPI()
+
 
 class Place(BaseModel):
     placeId: str
     placeName: str
     duration: int
 
+
 class PlaceMusicPair(BaseModel):
     placeId: str
     placeName: str
-    musicId: str
+    musicId: int
     musicName: str
     musicArtist: str
     duration: int
 
+
 class TravelSegmentDto(BaseModel):
     distance: float
+
 
 class RecommendationCandidateRequestDto(BaseModel):
     itinerary: List[Place]
     travelSegments: List[TravelSegmentDto]
 
+
 class RecommendationCandidateResponseDto(BaseModel):
     itinerary: List[PlaceMusicPair]
     travelSegments: List[TravelSegmentDto]
+
 
 class DayRecommendationRequestDto(BaseModel):
     dayNumber: int
     candidates: List[RecommendationCandidateRequestDto]
 
+
 class DayRecommendationResponseDto(BaseModel):
     dayNumber: int
     candidates: List[RecommendationCandidateResponseDto]
+
 
 class FinalRecommendationRequestDto(BaseModel):
     recommendations: List[DayRecommendationRequestDto]
@@ -43,8 +52,26 @@ class FinalRecommendationRequestDto(BaseModel):
     musicTags: List[str]
     tagOpenness: int
 
+
 class FinalRecommendationResponseDto(BaseModel):
     recommendations: List[DayRecommendationResponseDto]
+
+
+# 데이터프레임을 전역 변수로 정의하여 서버 시작 시 한 번만 로드
+music_df = pd.read_csv('music_recomendation.csv')
+
+
+def get_music_info(place_name):
+    filtered_df = music_df[music_df['rc_travel'] == place_name]
+    if not filtered_df.empty:
+        row = filtered_df.iloc[0]
+        return {
+            "musicId": int(row['id']),
+            "musicName": row['rc_music'],
+            "musicArtist": row['artist_name']
+        }
+    return None
+
 
 @app.post("/music_recommend", response_model=FinalRecommendationResponseDto)
 async def music_recommend(request: FinalRecommendationRequestDto):
@@ -52,122 +79,58 @@ async def music_recommend(request: FinalRecommendationRequestDto):
     print("Received request:")
     print(request)
 
-    # 샘플 응답 데이터
-    sample_response = FinalRecommendationResponseDto(
-        recommendations=[
-            DayRecommendationResponseDto(
-                dayNumber=1,
-                candidates=[
-                    RecommendationCandidateResponseDto(
-                        itinerary=[
-                            PlaceMusicPair(
-                                placeId="1",
-                                placeName="Central Park",
-                                musicId="101",
-                                musicName="Relaxing Vibes",
-                                musicArtist="Maroon 5",
-                                duration=120
-                            ),
-                            PlaceMusicPair(
-                                placeId="2",
-                                placeName="Statue of Liberty",
-                                musicId="102",
-                                musicName="Freedom Symphony",
-                                musicArtist="John Williams",
-                                duration=180
-                            )
-                        ],
-                        travelSegments=[
-                            TravelSegmentDto(
-                                distance=5
-                            )
-                        ]
-                    ),
-                    RecommendationCandidateResponseDto(
-                        itinerary=[
-                            PlaceMusicPair(
-                                placeId="3",
-                                placeName="Empire State Building",
-                                musicId="103",
-                                musicName="City Lights",
-                                musicArtist="The Weeknd",
-                                duration=90
-                            ),
-                            PlaceMusicPair(
-                                placeId="4",
-                                placeName="Times Square",
-                                musicId="104",
-                                musicName="Neon Nights",
-                                musicArtist="Daft Punk",
-                                duration=60
-                            )
-                        ],
-                        travelSegments=[
-                            TravelSegmentDto(
-                                distance=2
-                            )
-                        ]
+    recommendations = []
+
+    for day_recommendation in request.recommendations:
+        day_response = DayRecommendationResponseDto(
+            dayNumber=day_recommendation.dayNumber,
+            candidates=[]
+        )
+
+        for candidate in day_recommendation.candidates:
+            itinerary_with_music = []
+
+            for place in candidate.itinerary:
+                music_info = get_music_info(place.placeName)
+                if music_info:
+                    itinerary_with_music.append(
+                        PlaceMusicPair(
+                            placeId=place.placeId,
+                            placeName=place.placeName,
+                            musicId=music_info['musicId'],
+                            musicName=music_info['musicName'],
+                            musicArtist=music_info['musicArtist'],
+                            duration=place.duration
+                        )
                     )
-                ]
-            ),
-            DayRecommendationResponseDto(
-                dayNumber=2,
-                candidates=[
-                    RecommendationCandidateResponseDto(
-                        itinerary=[
-                            PlaceMusicPair(
-                                placeId="5",
-                                placeName="Brooklyn Bridge",
-                                musicId="105",
-                                musicName="Bridge to Tranquility",
-                                musicArtist="Norah Jones",
-                                duration=110
-                            ),
-                            PlaceMusicPair(
-                                placeId="6",
-                                placeName="Fifth Avenue",
-                                musicId="106",
-                                musicName="Shopping Spree",
-                                musicArtist="Madonna",
-                                duration=75
-                            )
-                        ],
-                        travelSegments=[
-                            TravelSegmentDto(
-                                distance=3.5
-                            )
-                        ]
-                    ),
-                    RecommendationCandidateResponseDto(
-                        itinerary=[
-                            PlaceMusicPair(
-                                placeId="7",
-                                placeName="Broadway",
-                                musicId="107",
-                                musicName="Broadway Classics",
-                                musicArtist="Andrew Lloyd Webber",
-                                duration=100
-                            ),
-                            PlaceMusicPair(
-                                placeId="8",
-                                placeName="Wall Street",
-                                musicId="108",
-                                musicName="Wall Street Blues",
-                                musicArtist="Eric Clapton",
-                                duration=130
-                            )
-                        ],
-                        travelSegments=[
-                            TravelSegmentDto(
-                                distance=4
-                            )
-                        ]
+                else:
+                    # 음악 정보를 찾지 못했을 경우 기본값 설정 (옵션)
+                    itinerary_with_music.append(
+                        PlaceMusicPair(
+                            placeId=place.placeId,
+                            placeName=place.placeName,
+                            musicId=0,
+                            musicName="Unknown",
+                            musicArtist="Unknown",
+                            duration=place.duration
+                        )
                     )
-                ]
+
+            day_response.candidates.append(
+                RecommendationCandidateResponseDto(
+                    itinerary=itinerary_with_music,
+                    travelSegments=candidate.travelSegments
+                )
             )
-        ]
+
+        recommendations.append(day_response)
+
+    response = FinalRecommendationResponseDto(
+        recommendations=recommendations
     )
-    return sample_response
+
+    return response
+
 
 if __name__ == "__main__":
     import uvicorn
