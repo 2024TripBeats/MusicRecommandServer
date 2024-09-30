@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
-from models.main import main_pipeline
+from backend.models.main import main_pipeline
 import numpy as np
 
 app = FastAPI()
