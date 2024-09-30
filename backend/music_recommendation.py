@@ -73,14 +73,9 @@ class FinalRecommendationResponseDto(BaseModel):
 
 @app.post("/music_recommend", response_model=FinalRecommendationResponseDto)
 async def music_recommend(request: FinalRecommendationRequestDto):
-    # 로그에 요청 데이터를 출력합니다.
-    print("Received request:")
-    print(request)
 
     # Call the main_pipeline function
     result = main_pipeline(request.dict())
-    print("result:")
-    print(result)
 
     # Process the result to match the response model
     recommendations = []
