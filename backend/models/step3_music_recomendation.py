@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-
+from backend.global_data import dfs
 
 def categorize_places_by_time(trip_data):
     for entry in trip_data:
@@ -55,10 +55,7 @@ def categorize_places_by_time(trip_data):
     return trip_data
 
 
-def get_music_scores(trip_data, csv_paths):
-    # CSV 파일을 데이터 프레임으로 로드
-    dfs = {time: pd.read_csv(path, index_col=0) for time, path in csv_paths.items()}
-
+def get_music_scores(trip_data):
     # 여행지에 어울리는 음악 점수를 내뱉는 함수
     for entry in trip_data:
         for day in entry.get('itinerary', []):

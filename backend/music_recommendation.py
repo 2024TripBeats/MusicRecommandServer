@@ -7,7 +7,6 @@ import numpy as np
 
 app = FastAPI()
 
-
 # 장소 정보 모델 (요청/응답 공통)
 class Place(BaseModel):
     placeId: str
@@ -54,7 +53,7 @@ class PlaceMusicPair(BaseModel):
     musicId: Optional[str] = None
     musicName: Optional[str] = None
     musicArtist: Optional[str] = None
-    spotify_id: Optional[int] = None
+    spotify_id: Optional[str] = None
 
 # 하루의 응답 데이터 모델 (응답)
 class DayItineraryResponseDto(BaseModel):
@@ -78,27 +77,18 @@ async def music_recommend(request: FinalRecommendationRequestDto):
     print("Received request:")
     print(request)
 
-    # Load additional data required by main_pipeline
-    csv_paths = {
-        '아침': '../morning_score_id.csv',
-        '오후': '../afternoon_score_id.csv',
-        '밤': '../night_score_id.csv'
-    }
-    music_embeddings = np.load('../music_embeddings.npy')
-    user_preferences_embeddings = np.load('../average_embeddings.npy', allow_pickle=True)
-    music_hashtags_data = pd.read_csv('../music_recommendation_list.csv')
-
     # Call the main_pipeline function
-    result = main_pipeline(request.dict(), music_hashtags_data, csv_paths, music_embeddings, user_preferences_embeddings)
+    result = main_pipeline(request.dict())
     print("result:")
     print(result)
 
     # Process the result to match the response model
     recommendations = []
-    for day in result:
-        candidates_count = len(day['candidates'])
+    for recommendation in result['recommendations']:  # result가 딕셔너리임
+        candidates_count = recommendation['candidates']
         itinerary = []
-        for candidate in day['candidates']:
+
+        for day in recommendation['itinerary']:  # 각 day 정보 접근
             day_response = DayItineraryResponseDto(
                 dayNumber=day['dayNumber'],
                 places=[
@@ -109,21 +99,20 @@ async def music_recommend(request: FinalRecommendationRequestDto):
                         duration=place['duration'],
                         order=place['order'],
                         new_order=place.get('new_order'),
-                        timeOfDay=place['timeOfDay'],
-                        music_bool=place['music_bool'],
+                        timeOfDay=place.get('timeOfDay'),
+                        music_bool=place.get('music_bool'),
                         musicId=place.get('top_musicId'),
                         musicName=place.get('song_title'),
                         musicArtist=place.get('artist_name'),
                         spotify_id=place.get('spotify_id'),
                         price=place['price']
-                    ) for place in candidate['itinerary']
+                    ) for place in day['places']  # 'places' 리스트에서 음악 포함된 장소 파싱
                 ],
-                travelSegments=candidate['travelSegments']
+                travelSegments=day['travelSegments']  # 'travelSegments' 정보 파싱
             )
             itinerary.append(day_response)
-        
+
         day_recommendation = RecommendationCandidateResponseDto(
-            dayNumber=day['dayNumber'],
             candidates=candidates_count,
             itinerary=itinerary
         )
@@ -134,7 +123,6 @@ async def music_recommend(request: FinalRecommendationRequestDto):
     )
 
     return response
-
 
 if __name__ == "__main__":
     import uvicorn
