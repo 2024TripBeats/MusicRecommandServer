@@ -22,4 +22,4 @@ COPY music_embeddings.npy /app/
 COPY average_embeddings.npy /app/
 
 # 6. uvicorn을 이용해 FastAPI 서버를 실행합니다.
-CMD ["uvicorn", "backend.music_recommendation:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "backend.music_recommendation:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
