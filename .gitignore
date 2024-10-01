@@ -1,0 +1,7 @@
+
+backend/.DS_Store
+.DS_Store
+/.idea
+/backend/__pycache__
+/backend/models/__pycache__
+/backend/models/__pycache__
