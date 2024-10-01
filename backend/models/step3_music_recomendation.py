@@ -9,7 +9,7 @@ def categorize_places_by_time(trip_data):
 
             # 식당 및 숙소는 음악 추천 제외
             for place in places:
-                if place['category'] in ['식당', '숙소']:
+                if place['category'] in ['식당', '숙소', '카페']:
                     place['new_order'] = None
                 else:
                     place['new_order'] = place['order']
