@@ -9,7 +9,7 @@ def categorize_places_by_time(trip_data):
 
             # 식당 및 숙소는 음악 추천 제외
             for place in places:
-                if place['category'] in ['식당', '숙소', '카페']:
+                if place['category'] in ['식당', '숙소', '카페', '식당(점심)', '식당(저녁)']:
                     place['new_order'] = None
                 else:
                     place['new_order'] = place['order']
@@ -140,6 +140,8 @@ def reorder_place_keys(trip_data):
 
     for entry in trip_data:
         for day in entry.get('itinerary', []):
+            # 일자 안에서 order 키의 순서대로 재정렬
+            day['places'].sort(key=lambda x: x['order'])
             for place in day['places']:
                 reordered_place = {key: place.get(key) for key in ordered_keys}
                 place.clear()
